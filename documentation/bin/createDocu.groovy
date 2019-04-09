@@ -64,19 +64,19 @@ class Helper {
 
     static projectRoot = new File(Helper.class.protectionDomain.codeSource.location.path).getParentFile().getParentFile().getParentFile()
 
-    static getConfigHelper(classLoader, roots, script) {
+    static getConfigHelper(classLoader, roots, script, String configHelperClass) {
 
         def compilerConfig = new CompilerConfiguration()
             compilerConfig.setClasspathList( roots )
 
         new GroovyClassLoader(classLoader, compilerConfig, true)
-            .parseClass(new File(projectRoot, 'src/com/sap/piper/ConfigurationHelper.groovy'))
+            .parseClass(new File(projectRoot, configHelperClass))
             .newInstance(script, [:]).loadStepDefaults()
     }
 
-    static getPrepareDefaultValuesStep(def gse) {
+    static getPrepareDefaultValuesStep(def gse, String stepScript) {
 
-        def prepareDefaultValuesStep = gse.createScript('prepareDefaultValues.groovy', new Binding())
+        def prepareDefaultValuesStep = gse.createScript(stepScript, new Binding())
 
         prepareDefaultValuesStep.metaClass.handlePipelineStepErrors {
             m, c ->  c()
@@ -376,6 +376,9 @@ roots = [
 stepsDir = null
 stepsDocuDir = null
 
+String prepareDefaultValuesStepScript = 'prepareDefaultValues.groovy'
+String configHelperClass = 'src/com/sap/piper/ConfigurationHelper.groovy'
+
 steps = []
 
 //
@@ -426,14 +429,14 @@ if( ! steps) {
     System.err << "[INFO] Generating docu only for step ${steps.size > 1 ? 's' : ''} ${steps}.\n"
 }
 
-def prepareDefaultValuesStep = Helper.getPrepareDefaultValuesStep(gse)
+def prepareDefaultValuesStep = Helper.getPrepareDefaultValuesStep(gse, prepareDefaultValuesStepScript)
 
 boolean exceptionCaught = false
 
 def stepDescriptors = [:]
 for (step in steps) {
     try {
-        stepDescriptors."${step}" = handleStep(step, prepareDefaultValuesStep, gse)
+        stepDescriptors."${step}" = handleStep(step, prepareDefaultValuesStep, gse, configHelperClass)
     } catch(Exception e) {
         exceptionCaught = true
         System.err << "${e.getClass().getName()} caught while handling step '${step}': ${e.getMessage()}.\n"
@@ -511,7 +514,7 @@ def fetchMandatoryFrom(def step, def parameterName, def steps) {
     }
 }
 
-def handleStep(stepName, prepareDefaultValuesStep, gse) {
+def handleStep(stepName, prepareDefaultValuesStep, gse, configHelperClass) {
 
     File theStep = new File(stepsDir, "${stepName}.groovy")
     File theStepDocu = new File(stepsDocuDir, "${stepName}.md")
@@ -525,7 +528,8 @@ def handleStep(stepName, prepareDefaultValuesStep, gse) {
 
     def defaultConfig = Helper.getConfigHelper(getClass().getClassLoader(),
                                                 roots,
-                                                Helper.getDummyScript(prepareDefaultValuesStep, stepName)).use()
+                                                Helper.getDummyScript(prepareDefaultValuesStep, stepName),
+                                                configHelperClass).use()
 
     def params = [] as Set
 
