@@ -394,10 +394,20 @@ if(args.length >= 2)
 
 stepsDocuDir = stepsDocuDir ?: new File(Helper.projectRoot, "documentation/docs/steps")
 
+def argsDrop = 2
+if(args.length >= 3 && args[2].contains('.groovy')) {
+    prepareDefaultValuesStepScript = args[2]
+    argsDrop ++
+}
+
+if(args.length >= 4 && args[3].contains('.groovy')) {
+    configHelperClass = args[3]
+    argsDrop ++
+}
 
 if(args.length >= 3)
-    steps = (args as List).drop(2)  // the first two entries are stepsDir and docuDir
-                                    // the other parts are considered as step names
+    steps = (args as List).drop(argsDrop)   // the first entries are stepsDir and docuDir and optionally prepareDefaultValuesStepScript & configHelperClass
+                                            // other parts are considered as step names
 
 
 // assign parameters
